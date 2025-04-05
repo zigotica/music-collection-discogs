@@ -1,0 +1,75 @@
+{{define "title"}}Edit {{.Title}}{{end}} {{define "edit"}}
+
+<div class="edit-form">
+  <h1>Edit {{.Title}}</h1>
+  <div class="edit-form-wrapper">
+    <form
+      class="edit-form-info"
+      action="/release/{{.ID}}/update"
+      method="POST"
+      enctype="multipart/form-data"
+    >
+      <div class="edit-form-cover-group">
+        <label for="cover">Cover Image:</label>
+        <input type="file" id="cover" name="cover" accept="image/*" />
+        {{if .CoverImage}}
+        <div class="current-cover">
+          <img
+            src="/static/covers/{{.CoverImage}}"
+            alt="Cover for {{.Title}}"
+            style="max-width: 100px"
+          />
+        </div>
+        {{end}}
+      </div>
+      <div class="edit-form-info-group">
+        <div class="edit-form-group">
+          <label for="title">Title:</label>
+          <input type="text" id="title" name="title" value="{{.Title}}" />
+        </div>
+        <div class="edit-form-group">
+          <label for="artist">Artist:</label>
+          <input type="text" id="artist" name="artist" value="{{.Artist}}" />
+        </div>
+        <div class="edit-checkbox">
+          <input type="hidden" name="old_artist" value="{{.Artist}}" />
+          <input type="checkbox" id="update_all_artist_occurrencies" name="update_all_artist_occurrencies" />
+          <label class="mark-all" for="update_all_artist_occurrencies">Change all occurrences of same Artist</label>
+        </div>
+        <div class="edit-form-group">
+          <label for="year">Year:</label>
+          <input type="number" id="year" name="year" value="{{.Year}}" />
+        </div>
+        {{if .Wanted}}
+        <div class="edit-checkbox">
+          <input type="checkbox" id="convert_to_owned" name="convert_to_owned" />
+          <label for="convert_to_owned">Convert to Owned</label>
+        </div>
+        {{end}}
+        <button class="btn" type="submit"><i class="bi-floppy"></i> Save</button>
+      </div>
+    </form>
+    {{if .Tags}}
+    <div class="tags-section">
+      <label>Remove Tags:</label>
+      {{range .Tags}}
+        <form action="/release/{{$.ID}}/remove-tag" method="POST">
+          <input type="hidden" name="tag" value="{{.}}" />
+          <button class="tags-list" type="submit">
+            {{.}}
+            <i class="bi-x-circle"></i> 
+          </button>
+        </form>
+      {{end}}
+    </div>
+    {{end}}
+    <div class="new-tag-form-group">
+      <label for="new-tag">Add Tag:</label>
+      <form action="/release/{{.ID}}/add-tag" method="POST">
+        <input type="text" id="new-tag" name="tag" />
+        <button class="btn" type="submit"><i class="bi-bookmark-plus"></i> Add Tag</button>
+      </form>
+    </div>
+  </div>
+</div>
+{{end}}

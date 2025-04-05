@@ -1,0 +1,28 @@
+{{define "title"}}{{.Title}}{{end}} {{define "releases"}}
+<div class="container">
+  <h1>
+    {{if .Wanted}}<i class="bi-bookmark-heart"></i> {{.Title}} {{else if
+    .NeedScrape}}<i class="bi-exclamation-triangle"></i> {{.Title}} {{else if
+    .Year}}<i class="bi-calendar"></i> {{.Title}} {{else if .Tag}}<i
+      class="bi-bookmark"
+    ></i>
+    {{.Title}} {{else if .Artist}}<i class="bi-people"></i> {{.Title}} {{else if
+    .Physical}}{{.Title}} {{else if .IsSearch}}{{.Title}} {{else}}All
+    Releases{{end}}
+  </h1>
+
+  {{template "sorting" dict 
+    "SortingFields" .SortingFields
+    "OrderBy" .OrderBy 
+    "OrderDirection" .OrderDirection
+    "Filters" .Filters
+  }}
+
+  <div class="releases">
+    {{if .Releases}} {{range .Releases}} {{template "release" .}} {{end}}
+    {{else}}
+    <p>No releases found.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}

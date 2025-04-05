@@ -1,0 +1,45 @@
+{{define "release"}}
+<div 
+  class="release {{if .Wanted}}wanted-release{{end}}"
+  {{if .Wanted}} data-label="wanted"{{end}}
+>
+  <div class="release-header">
+    <i class="bi-bookmark-heart-fill"></i>
+    <div class="release-cover">
+      <div class="cover-box">
+        {{if .CoverImage}}
+        <img src="/static/covers/{{.CoverImage}}" alt="Cover for {{.Title}}" />
+        {{else}}
+        <span class="missing" />
+        {{end}}
+      </div>
+    </div>
+    <div class="release-info">
+      <h2 class="release-title">{{.Title}}</h2>
+      {{if .Artist}}
+      <p class="release-artist">
+        <a href="/artist/{{.Artist}}" class="artist-link editable">{{.Artist}}</a>
+      </p>
+      {{end}}
+      <div class="metadata">
+        {{if ne .Year 0}}
+          <p><a href="/year/{{.Year}}" class="year-link editable"
+          ><i class="bi-calendar-date"></i> {{.Year}}</a
+          ></p>
+        {{end}}
+        <p>
+          <a href="/format/{{.Physical}}" class="format-link editable"><i class="bi-vinyl-fill"></i> {{.Physical}}</a>
+        </p>
+        <p class="edit-box"><a href="/release/{{.ID}}/edit" class="edit-link"><i class="bi bi-input-cursor-text"></i> Edit</a></p>
+      </div>
+    </div>
+  </div>
+  <p class="release-details">
+      {{if .Tags}}
+        {{range .Tags}}
+          <a href="/tag/{{.}}" class="tag-link">{{.}}</a>
+        {{end}}
+      {{end}}
+  </p>
+</div>
+{{end}}

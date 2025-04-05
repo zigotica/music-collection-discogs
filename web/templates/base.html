@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="view-transition" content="same-origin" />
+    <title>{{template "title" .}}</title>
+    <link rel="stylesheet" href="/static/reset.css" />
+    <link rel="stylesheet" href="/static/fonts.css" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li>
+          <a href="/"><i class="bi-skip-start-circle"></i> Home</a>
+        </li>
+        <li>
+          <a href="/admin"><i class="bi-gear-fill"></i> Admin</a>
+        </li>
+        <li>
+          <a href="/releases/wanted"
+            ><i class="bi-bookmark-heart"></i> Wanted</a
+          >
+        </li>
+        <li>
+          <a href="/releases/need-scraping"
+            ><i class="bi-exclamation-triangle"></i> Missing data</a
+          >
+        </li>
+      </ul>
+      <div class="search-wrapper">
+        <form action="/search" method="get" class="search-form">
+          <input
+            type="search"
+            id="query"
+            name="query"
+            placeholder="Search Title, Artist, Year or Format..."
+            required
+          />
+          <button type="submit"><i class="bi-search" title="Find"></i></button>
+        </form>
+        <label for="query"><i class="bi-search"></i></label><i class="bi-x"></i>
+      </div>
+    </nav>
+    <main>
+      {{if eq .Template "index"}} {{template "index" .}} {{else if eq .Template
+      "releases"}} {{template "releases" .}} {{else if eq .Template "edit"}}
+      {{template "edit" .}} {{else if eq .Template "admin"}} {{template "admin"
+      .}} {{else}} {{template "index" .}} {{end}}
+    </main>
+  </body>
+</html>

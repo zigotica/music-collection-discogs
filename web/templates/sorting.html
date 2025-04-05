@@ -1,0 +1,20 @@
+{{define "sorting"}}
+<div class="sort-options">
+    {{range .SortingFields}}
+    <form method="get">
+        {{range $key, $value := $.Filters}}
+        <input type="hidden" name="{{$key}}" value="{{$value}}">
+        {{end}}
+        <input type="hidden" name="order_by" value="{{.Field}}">
+        {{if and (eq $.OrderBy .Field) (eq $.OrderDirection "asc")}}
+            <input type="hidden" name="order_direction" value="desc">
+            <button type="submit"><i class="{{.IconDown}}"></i> {{.Label}}</button>
+        {{else}}
+            <input type="hidden" name="order_direction" value="asc">
+            <button type="submit"><i class="{{.IconUp}}"></i> {{.Label}}</button>
+        {{end}}
+    </form>
+    {{end}}
+</div>
+{{end}}
+

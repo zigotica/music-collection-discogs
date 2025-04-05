@@ -1,0 +1,20 @@
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "index"}}
+    <h1>{{.Title}}</h1>
+
+    {{template "sorting" dict 
+      "SortingFields" .SortingFields
+      "OrderBy" .OrderBy 
+      "OrderDirection" .OrderDirection
+      "Filters" .Filters
+    }}
+
+    <div class="releases all">
+        {{range .Releases}}
+            {{template "release" .}}
+        {{else}}
+        <p>No releases found.</p>
+        {{end}}
+    </div>
+{{end}}

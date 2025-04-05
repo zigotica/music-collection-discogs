@@ -1,0 +1,71 @@
+{{define "title"}}{{.Title}}{{end}} {{define "admin"}}
+<script src="https://unpkg.com/htmx.org@1.9.6"></script>
+<script>
+  function onImportSuccess() {
+    document.getElementById("import-result").innerHTML =
+      "Import completed successfully!";
+    // Force refresh of the main page's collection when navigating back
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, "", "/");
+    }
+  }
+</script>
+
+<h1>Admin Panel</h1>
+
+<div class="admin-actions">
+  <div class="upload-form-group section">
+    <label for="file-upload">Upload CSV file with existing albums</label>
+    <form
+      id="upload-form"
+      hx-post="/upload"
+      hx-target="#import-result"
+      hx-swap="innerHTML"
+      enctype="multipart/form-data"
+      hx-on:after-request="onImportSuccess()"
+    >
+      <input type="file" name="file" id="file-upload" accept=".csv" />
+      <button class="btn" type="submit"><i class="bi-cloud-plus"></i> Upload Albums</button>
+    </form>
+    <div id="import-result"></div>
+  </div>
+
+  <div class="upload-wanted-form-group section">
+    <label for="file-upload-wanted">Upload CSV file with wanted albums</label>
+    <form
+      id="upload-wanted-form"
+      hx-post="/upload-wanted"
+      hx-target="#import-wanted-result"
+      hx-swap="innerHTML"
+      enctype="multipart/form-data"
+      hx-on:after-request="onImportSuccess()"
+    >
+      <input
+        type="file"
+        name="file"
+        id="file-upload-wanted"
+        accept=".csv"
+      />
+      <button class="btn" type="submit"><i class="bi-cloud-plus"></i> Upload Wanted</button>
+    </form>
+    <div id="import-wanted-result"></div>
+  </div>
+
+  <div class="scrape-form-group section">
+    <label>Update releases data from lastfm</label>
+    <form
+      id="scrape-form"
+      hx-post="/scrape"
+      hx-target="#scrape-result"
+      hx-swap="innerHTML"
+    >
+      <button
+        class="btn" type="submit"
+      >
+        <i class="bi-search-heart"></i> Scrape Releases
+      </button>
+    </form>
+    <div id="scrape-result"></div>
+  </div>
+</div>
+{{end}}
