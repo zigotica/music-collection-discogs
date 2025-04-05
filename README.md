@@ -35,6 +35,10 @@ Used to upload discogs CSV files or start the scrapping process.
 
 <img src="images/edit.png" alt="Edit" width="390"/>
 
+### Dark mode
+
+<img src="images/dark.png" alt="Dark mode" width="390"/>
+
 ## Requirements
 
 - Go 1.23+
