@@ -59,11 +59,13 @@
       hx-target="#scrape-result"
       hx-swap="innerHTML"
     >
-      <button
-        class="btn" type="submit"
-      >
+      <button class="btn" type="submit">
         <i class="bi-search-heart"></i> Scrape Releases
       </button>
+
+      <a class="btn" href="/releases/need-scraping"
+        ><i class="bi-exclamation-triangle"></i> List missing data</a
+      >
     </form>
     <div id="scrape-result"></div>
   </div>

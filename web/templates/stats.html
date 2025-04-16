@@ -1,0 +1,207 @@
+{{define "title"}}{{.Title}}{{end}} {{define "stats"}}
+
+<div class="stats-container">
+  <h1>Releases by Decade</h1>
+  <div class="stats-chart-container section">
+    <canvas id="decadeChart"></canvas>
+  </div>
+
+  <h1>Releases by Format</h1>
+  <div class="stats-chart-container section">
+    <canvas id="formatChart"></canvas>
+  </div>
+
+  <h1>Top 20 Artists</h1>
+  <div class="stats-chart-container section">
+    <canvas id="artistChart"></canvas>
+  </div>
+</div>
+
+<script>
+  // Register Chart.js datalabels plugin
+  Chart.register(ChartDataLabels);
+
+    // Helper function to generate chart data from Go slice
+    function prepareChartData(stats) {
+      const labels = [];
+      const data = [];
+      stats.forEach(item => {
+        labels.push(item.Label);
+        data.push(item.Count);
+      });
+      return {labels, data};
+    }
+
+    // Prepare data for each chart
+    const decadeData = prepareChartData({{ .DecadeStats}});
+    const formatData = prepareChartData({{ .FormatStats}});
+    const artistData = prepareChartData({{ .ArtistStats}});
+
+    // Get canvas contexts
+    const decadeCtx = document.getElementById('decadeChart').getContext('2d');
+    const formatCtx = document.getElementById('formatChart').getContext('2d');
+    const artistCtx = document.getElementById('artistChart').getContext('2d');
+
+    // Get the computed value of the CSS variable
+    const computedColor = getComputedStyle(document.documentElement).getPropertyValue('--color-100').trim();
+
+    // Chart configuration options (common for horizontal bars)
+    const chartOptions = {
+      indexAxis: 'y', // Make it horizontal
+      responsive: true,
+      maintainAspectRatio: false, // Allow chart to fill container height
+      plugins: {
+        legend: {
+          display: false // Hide legend as labels are on the axis
+        },
+        datalabels: {
+          color: computedColor,
+          font: {
+            size: 12,
+            weight: 'bold'
+          },
+          anchor: 'center',
+          align: 'end'
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0 // Ensure whole numbers on the count axis
+          }
+        }
+      },
+      // Generic click handler function
+      onClick: (event) => {
+        const points = event.chart.getElementsAtEventForMode(event, 'nearest', {intersect: true}, true);
+
+        if (points.length) {
+          const firstPoint = points[0];
+          const label = event.chart.data.labels[firstPoint.index];
+          let urlPrefix = '';
+          let encode = false;
+          // Determine URL prefix based on the chart canvas ID
+          const canvasId = event.chart.canvas.id;
+
+          if (canvasId === 'decadeChart') {
+            urlPrefix = '/tag/'; // Decades are represented by tags like "1980s"
+          } else if (canvasId === 'formatChart') {
+            urlPrefix = '/format/';
+          } else if (canvasId === 'artistChart') {
+            urlPrefix = '/artist/';
+            encode = true; // Artist names might need encoding
+          }
+
+
+          if (urlPrefix) {
+            const finalLabel = encode ? encodeURIComponent(label) : label;
+            const finalUrl = `${urlPrefix}${finalLabel}`;
+
+            window.location.href = finalUrl; // Navigate
+          }
+        }
+      }
+    };
+
+    // Create Decade Chart
+    new Chart(decadeCtx, {
+      type: 'bar',
+      data: {
+        labels: decadeData.labels,
+        datasets: [{
+          label: 'Count',
+          data: decadeData.data,
+          backgroundColor: 'rgba(243, 202, 64, 0.7)',
+          borderColor: 'rgba(243, 202, 64, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: chartOptions
+    });
+
+    // Create Format Chart
+    new Chart(formatCtx, {
+      type: 'pie',
+      data: {
+        labels: formatData.labels,
+        datasets: [{
+          label: 'Count',
+          data: formatData.data,
+          backgroundColor: [
+            'rgba(186, 104, 200, 0.7)', // Light purple
+            'rgba(79, 195, 247, 0.7)',  // Sky blue
+            'rgba(129, 199, 132, 0.7)', // Pastel green
+            'rgba(255, 241, 118, 0.7)', // Pastel yellow
+            'rgba(255, 183, 77, 0.7)',  // Pastel orange
+            'rgba(239, 154, 154, 0.7)'  // Pastel red
+          ],
+          borderColor: 'rgba(255, 255, 255, 0.8)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: {
+          padding: {
+            top: 40,
+            bottom: 40,
+            left: 40,
+            right: 40
+          }
+        },
+        plugins: {
+          datalabels: {
+            color: computedColor,
+            font: {
+              size: 12,
+              weight: 'bold'
+            },
+            formatter: (value, context) => {
+              return `${context.chart.data.labels[context.dataIndex]}\n${value}`;
+            },
+            anchor: 'center',
+            align: 'end',
+            offset: 20,
+            clip: false,
+            display: (context) => {
+              // Only show labels for slices larger than 5% to prevent overlap
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const value = context.dataset.data[context.dataIndex];
+              return (value / total) > 0.05;
+            }
+          }
+        },
+        onClick: chartOptions.onClick // Keep the same click handler
+      }
+    });
+
+    // Create Artist Chart
+    new Chart(artistCtx, {
+      type: 'bar',
+      data: {
+        labels: artistData.labels,
+        datasets: [{
+          label: 'Count',
+          data: artistData.data,
+          backgroundColor: 'rgba(54, 162, 235, 0.7)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        ...chartOptions, // Spread the common options
+        scales: {
+          ...chartOptions.scales, // Spread existing scales options (like x-axis)
+          y: { // Override or add y-axis specific options
+            ticks: {
+              autoSkip: false // Ensure all artist labels are shown
+            }
+          }
+        }
+      }
+    });
+</script>
+
+{{end}}

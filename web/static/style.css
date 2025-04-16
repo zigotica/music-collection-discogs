@@ -479,7 +479,7 @@ input[type=checkbox] {
   font-family: PoppinsLight, sans-serif;
   font-size: 2rem;
   line-height: calc(var(--unit) * 2);
-  color: var(--color-100);
+  color: var(--color-80);
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;  
@@ -494,7 +494,7 @@ input[type=checkbox] {
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;  
   overflow: hidden;
-  color: var(--color-85);
+  color: var(--color-100);
 }
 
 .release-artist:hover,
@@ -557,6 +557,17 @@ input[type=checkbox] {
 .tag-link:hover,
 .tag-link:focus {
   background-color: var(--color-12);
+}
+
+/* Stats Page Chart Container Styling */
+.stats-chart-container {
+  position: relative; /* Needed for Chart.js responsiveness */
+  height: 400px; /* Set a fixed height to prevent infinite growth */
+  margin-bottom: var(--unit); /* Add some space below each chart */
+  background: var(--color-00); /* Optional: Match background with other sections */
+  padding: var(--unit); /* Optional: Add padding */
+  border-radius: 8px; /* Optional: Match border radius */
+  box-shadow: 0 4px 8px var(--color-shadow); /* Optional: Match shadow */
 }
 
 /* Updated CSS for responsive album grid */

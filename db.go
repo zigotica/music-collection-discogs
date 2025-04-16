@@ -373,6 +373,23 @@ func setWantedStatus(id string, wanted bool) error {
 	return err
 }
 
+// fetchTagsForReleaseID retrieves the current tags for a given release ID.
+func fetchTagsForReleaseID(id string) ([]string, error) {
+	var tags pq.StringArray
+	err := db.QueryRow("SELECT tags FROM releases WHERE id = $1", id).Scan(&tags)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []string{}, nil // Return empty slice if no tags found or release doesn't exist
+		}
+		log.Printf("Error fetching tags for release ID %s: %v", id, err)
+		return nil, err
+	}
+	// Handle potential NULL tags column by returning an empty slice
+	if tags == nil {
+		return []string{}, nil
+	}
+	return tags, nil
+}
 
 // Helper function to get release_id as string from id
 func fetchReleaseIDByID(id string) (string, error) {
@@ -384,32 +401,80 @@ func fetchReleaseIDByID(id string) (string, error) {
 	return strconv.Itoa(releaseID), nil
 }
 
-func updateReleaseInDB(id, title, artist, year, coverImage string, convertToOwned bool) error {
-	query := `
-		UPDATE releases 
-		SET title = $1, artist = $2, year = $3`
-	args := []interface{}{title, artist, year}
+// updateReleaseInDB updates the core fields of a release and ensures the decade tag is correct.
+func updateReleaseInDB(id, title, artist, yearStr, coverImage string, convertToOwned bool) error {
+	// Fetch current tags
+	currentTags, err := fetchTagsForReleaseID(id)
+	if err != nil {
+		// Log the error but proceed, assuming empty tags if fetch failed
+		log.Printf("Warning: Could not fetch current tags for release ID %s: %v", id, err)
+		currentTags = []string{}
+	}
+
+	// Prepare new tags list, filtering out old decade tags
+	newTags := []string{}
+	for _, tag := range currentTags {
+		// Check if the tag matches the decade format "YYYYs"
+		if len(tag) >= 5 && strings.HasSuffix(tag, "s") {
+			if _, err := strconv.Atoi(tag[:len(tag)-1]); err == nil && len(tag[:len(tag)-1]) == 4 {
+				// It's a decade tag, skip it
+				continue
+			}
+		}
+		newTags = append(newTags, tag)
+	}
+
+	// Parse year and add new decade tag
+	yearInt, err := strconv.Atoi(yearStr)
+	if err == nil && yearInt > 0 {
+		decade := (yearInt / 10) * 10
+		decadeTag := fmt.Sprintf("%ds", decade)
+		// Add the new decade tag if it's not already present (shouldn't be after filtering, but check just in case)
+		tagExists := false
+		for _, tag := range newTags {
+			if tag == decadeTag {
+				tagExists = true
+				break
+			}
+		}
+		if !tagExists {
+			newTags = append(newTags, decadeTag)
+		}
+	} else if err != nil {
+		log.Printf("Warning: Invalid year '%s' provided for release ID %s. Cannot determine decade tag.", yearStr, id)
+		// Keep year as 0 or invalid value in DB if conversion fails
+		yearStr = "0"
+	}
+
+
+	// Build the query dynamically
+	query := `UPDATE releases SET title = $1, artist = $2, year = $3, tags = $4`
+	args := []interface{}{title, artist, yearStr, pq.StringArray(newTags)}
+	argCounter := 5 // Start counting args from 5
 
 	// Only update wanted status if converting from wanted to owned
 	if convertToOwned {
-		query += `, wanted = $4`
+		query += fmt.Sprintf(", wanted = $%d", argCounter)
 		args = append(args, false)
+		argCounter++
 	}
 
 	if coverImage != "" {
-		query += `, cover_image = $` + strconv.Itoa(len(args)+1)
+		query += fmt.Sprintf(", cover_image = $%d", argCounter)
 		args = append(args, coverImage)
+		argCounter++
 	}
 
-	query += ` WHERE id = $` + strconv.Itoa(len(args)+1)
+	query += fmt.Sprintf(" WHERE id = $%d", argCounter)
 	args = append(args, id)
 
-	_, err := db.Exec(query, args...)
+	_, err = db.Exec(query, args...)
 	if err != nil {
-		log.Printf("Error updating release in database: %v", err)
+		log.Printf("Error updating release in database (ID: %s): %v", id, err)
 	}
 	return err
 }
+
 
 func updateAllArtistOccurrences(oldArtist, newArtist string) error {
 	_, err := db.Exec("UPDATE releases SET artist = $1 WHERE artist = $2", newArtist, oldArtist)
@@ -421,6 +486,100 @@ func updateAllArtistOccurrences(oldArtist, newArtist string) error {
 	return nil
 }
 
+// --- Statistics Functions ---
+
+type StatItem struct {
+	Label string
+	Count int
+}
+
+// fetchStatsByDecade counts owned releases grouped by decade.
+func fetchStatsByDecade() ([]StatItem, error) {
+	query := `
+		SELECT (year / 10) * 10 AS decade, COUNT(*) as count
+		FROM releases
+		WHERE wanted = FALSE AND year > 0  -- Exclude wanted and releases with year 0
+		GROUP BY decade
+		ORDER BY decade ASC;
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Printf("Error fetching stats by decade: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []StatItem
+	for rows.Next() {
+		var decade int
+		var count int
+		if err := rows.Scan(&decade, &count); err != nil {
+			log.Printf("Error scanning decade stat row: %v", err)
+			continue
+		}
+		stats = append(stats, StatItem{Label: fmt.Sprintf("%ds", decade), Count: count})
+	}
+	return stats, rows.Err()
+}
+
+// fetchStatsByFormat counts owned releases grouped by physical format.
+func fetchStatsByFormat() ([]StatItem, error) {
+	query := `
+		SELECT COALESCE(physical, 'Unknown') as format, COUNT(*) as count
+		FROM releases
+		WHERE wanted = FALSE
+		GROUP BY COALESCE(physical, 'Unknown') -- Use the expression instead of the alias
+		ORDER BY count DESC;
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Printf("Error fetching stats by format: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []StatItem
+	for rows.Next() {
+		var item StatItem
+		if err := rows.Scan(&item.Label, &item.Count); err != nil {
+			log.Printf("Error scanning format stat row: %v", err)
+			continue
+		}
+		stats = append(stats, item)
+	}
+	return stats, rows.Err()
+}
+
+// fetchStatsTopArtists gets the top 10 artists by owned release count.
+func fetchStatsTopArtists() ([]StatItem, error) {
+	query := `
+		SELECT artist, COUNT(*) as count
+		FROM releases
+		WHERE wanted = FALSE AND artist IS NOT NULL AND artist != ''
+		GROUP BY artist
+		ORDER BY count DESC
+		LIMIT 20;
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Printf("Error fetching top artists stats: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []StatItem
+	for rows.Next() {
+		var item StatItem
+		if err := rows.Scan(&item.Label, &item.Count); err != nil {
+			log.Printf("Error scanning top artist stat row: %v", err)
+			continue
+		}
+		stats = append(stats, item)
+	}
+	return stats, rows.Err()
+}
+
+
 func updateReleaseFromScraping(release Release, tags []string, result *strings.Builder) error {
 	uniqueTags := make(map[string]bool)
 	var dedupedTags []string
@@ -431,29 +590,57 @@ func updateReleaseFromScraping(release Release, tags []string, result *strings.B
 		}
 	}
 
+	// Determine year from "year:YYYY" tags
 	year := 0
-	for _, tag := range tags {
+	for _, tag := range dedupedTags { // Use dedupedTags here
 		if strings.HasPrefix(tag, "year:") {
 			if y, err := strconv.Atoi(strings.TrimPrefix(tag, "year:")); err == nil {
 				year = y
-				break
+				break // Found the year, no need to check further
 			}
 		}
 	}
 
-	var filteredTags []string
+	// Filter tags: remove "year:YYYY" and existing decade tags ("YYYYs")
+	finalTags := []string{}
+	uniqueCheck := make(map[string]bool) // To ensure final tags are unique
+
 	for _, tag := range dedupedTags {
-		if !strings.HasPrefix(tag, "year:") {
-			filteredTags = append(filteredTags, tag)
+		// Skip year tags
+		if strings.HasPrefix(tag, "year:") {
+			continue
+		}
+		// Skip existing decade tags
+		if len(tag) >= 5 && strings.HasSuffix(tag, "s") {
+			if _, err := strconv.Atoi(tag[:len(tag)-1]); err == nil && len(tag[:len(tag)-1]) == 4 {
+				continue // Skip decade tag
+			}
+		}
+		// Add other tags if not already added
+		if !uniqueCheck[tag] {
+			finalTags = append(finalTags, tag)
+			uniqueCheck[tag] = true
 		}
 	}
-	filteredTagsArray := pq.StringArray(filteredTags)
 
-	// Update the release in the database
-	res, err := db.Exec("UPDATE releases SET tags = $1, year = $2 WHERE release_id = $3", filteredTagsArray, year, release.ReleaseID)
+
+	// Add the correct decade tag if year is valid
+	if year > 0 {
+		decade := (year / 10) * 10
+		decadeTag := fmt.Sprintf("%ds", decade)
+		if !uniqueCheck[decadeTag] { // Add only if not already present
+			finalTags = append(finalTags, decadeTag)
+			uniqueCheck[decadeTag] = true
+		}
+	}
+
+	finalTagsArray := pq.StringArray(finalTags)
+
+	// Update the release in the database with filtered tags and determined year
+	res, err := db.Exec("UPDATE releases SET tags = $1, year = $2 WHERE release_id = $3", finalTagsArray, year, release.ReleaseID)
 	if err != nil {
-		log.Printf("Error updating tags for release ID: %d, ReleaseID: %d: %v", release.ID, release.ReleaseID, err)
-		result.WriteString(fmt.Sprintf("<br>Error updating tags for release ID: %d, ReleaseID: %d: %v\n", release.ID, release.ReleaseID, err))
+		log.Printf("Error updating tags/year for release ID: %d, ReleaseID: %d: %v", release.ID, release.ReleaseID, err)
+		result.WriteString(fmt.Sprintf("<br>Error updating tags/year for release ID: %d, ReleaseID: %d: %v\n", release.ID, release.ReleaseID, err))
 		return err
 	}
 

@@ -51,6 +51,7 @@ func init() {
 		"web/templates/edit.html",
 		"web/templates/admin.html",
 		"web/templates/sorting.html",
+		"web/templates/stats.html", // Add the new stats template
 	}
 
 	Templates, err = Templates.ParseFiles(templateFiles...)
@@ -82,6 +83,7 @@ func main() {
 	http.HandleFunc("/upload", uploadHandler)
 	http.HandleFunc("/upload-wanted", uploadWantedHandler)
 	http.HandleFunc("/search", searchHandler)
+	http.HandleFunc("/stats", statsHandler) // Add the new stats route
 
 	log.Println("Server started on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

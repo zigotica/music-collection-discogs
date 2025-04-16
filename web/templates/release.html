@@ -28,9 +28,29 @@
           ></p>
         {{end}}
         <p>
-          <a href="/format/{{.Physical}}" class="format-link editable"><i class="bi-vinyl-fill"></i> {{.Physical}}</a>
+          <a href="/format/{{.Physical}}" class="format-link editable">
+            {{if eq .Physical "Tape"}}
+            <i class="bi-cassette"></i>
+            {{else if eq .Physical "Blu-ray"}}
+            <i class="bi-disc-fill"></i>
+            {{else if eq .Physical "DVD"}}
+            <i class="bi-disc-fill"></i>
+            {{else if eq .Physical "CD"}}
+            <i class="bi-disc"></i>
+            {{else if eq .Physical "Vinyl"}}
+            <i class="bi-vinyl"></i>
+            {{else if eq .Physical "EP"}}
+            <i class="bi-vinyl-fill"></i>
+            {{else}}
+            <i class="bi-record"></i> {{/* Default/fallback icon */}} {{end}}
+            {{.Physical}}
+          </a>
         </p>
-        <p class="edit-box"><a href="/release/{{.ID}}/edit" class="edit-link"><i class="bi bi-input-cursor-text"></i> Edit</a></p>
+        <p class="edit-box">
+          <a href="/release/{{.ID}}/edit" class="edit-link"
+            ><i class="bi bi-input-cursor-text"></i> Edit</a
+          >
+        </p>
       </div>
     </div>
   </div>

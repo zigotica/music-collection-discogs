@@ -278,6 +278,48 @@ func wantedReleasesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func statsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Handling stats request from %s", r.RemoteAddr)
+
+	decadeStats, err := fetchStatsByDecade()
+	if err != nil {
+		http.Error(w, "Error fetching decade statistics", http.StatusInternalServerError)
+		return
+	}
+
+	formatStats, err := fetchStatsByFormat()
+	if err != nil {
+		http.Error(w, "Error fetching format statistics", http.StatusInternalServerError)
+		return
+	}
+
+	artistStats, err := fetchStatsTopArtists()
+	if err != nil {
+		http.Error(w, "Error fetching artist statistics", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		Title       string
+		Template    string
+		DecadeStats []StatItem
+		FormatStats []StatItem
+		ArtistStats []StatItem
+	}{
+		Title:       "Collection Statistics",
+		Template:    "stats",
+		DecadeStats: decadeStats,
+		FormatStats: formatStats,
+		ArtistStats: artistStats,
+	}
+
+	if err := Templates.ExecuteTemplate(w, "base.html", data); err != nil {
+		log.Printf("Error rendering stats template: %v", err)
+		// Avoid sending another error if headers already sent
+	}
+	log.Printf("Successfully rendered stats page")
+}
+
 func needScrapingReleasesHandler(w http.ResponseWriter, r *http.Request) {
 	sortingData := getSortingData(r) // Get sorting data
 
